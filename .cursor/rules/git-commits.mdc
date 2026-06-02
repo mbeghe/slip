@@ -1,0 +1,12 @@
+---
+description: Git commits without Cursor attribution
+alwaysApply: true
+---
+
+# Git commits
+
+When creating git commits for this project:
+
+- Use only `git commit -m "message"` with a plain message the user asked for.
+- Never add `--trailer`, `Co-authored-by`, `Made-with: Cursor`, or any Cursor/AI attribution.
+- Never mention Cursor, Copilot, or AI tools in commit messages.
