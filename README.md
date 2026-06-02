@@ -38,7 +38,7 @@ npm run dev       # API :3001 + web :5173
 ### 1. Subir el código a GitHub
 
 ```bash
-git remote add origin https://github.com/TU_USUARIO/slip.git
+git remote add origin https://github.com/mbeghe/slip.git
 git branch -M main
 git push -u origin main
 ```
