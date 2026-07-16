@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   adminDeleteProduct,
+  adminExportCatalog,
   adminLogout,
   adminMe,
+  adminRestoreCatalog,
   fetchProducts,
 } from "../../lib/api";
 import { ProductImage } from "../../components/ProductImage";
@@ -12,8 +14,10 @@ import type { Product } from "../../types";
 
 export function AdminDashboardPage() {
   const navigate = useNavigate();
+  const restoreInputRef = useRef<HTMLInputElement>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState<"export" | "restore" | null>(null);
 
   useEffect(() => {
     adminMe()
@@ -38,6 +42,46 @@ export function AdminDashboardPage() {
     navigate("/admin/login");
   }
 
+  async function handleExport() {
+    setBusy("export");
+    try {
+      const { blob, filename } = await adminExportCatalog();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "No se pudo exportar");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function handleRestoreFile(file: File | undefined) {
+    if (!file) return;
+    if (
+      !confirm(
+        "Esto reemplaza TODO el catálogo actual (productos e imágenes) por el backup. ¿Continuar?"
+      )
+    ) {
+      return;
+    }
+    setBusy("restore");
+    try {
+      const result = await adminRestoreCatalog(file);
+      const next = await fetchProducts();
+      setProducts(next);
+      alert(`Catálogo restaurado: ${result.restored} producto(s).`);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "No se pudo restaurar");
+    } finally {
+      setBusy(null);
+      if (restoreInputRef.current) restoreInputRef.current.value = "";
+    }
+  }
+
   if (loading) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-16 text-slip-accent-blue">
@@ -50,7 +94,30 @@ export function AdminDashboardPage() {
     <div className="mx-auto max-w-4xl px-4 py-10">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
         <h1 className="text-2xl font-bold text-slip-ink">Administración</h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={handleExport}
+            disabled={busy !== null}
+            className="rounded-full border border-slip-accent-blue text-slip-ink font-semibold px-5 py-2 text-sm disabled:opacity-50"
+          >
+            {busy === "export" ? "Exportando…" : "Exportar catálogo"}
+          </button>
+          <button
+            type="button"
+            onClick={() => restoreInputRef.current?.click()}
+            disabled={busy !== null}
+            className="rounded-full border border-slip-accent-blue text-slip-ink font-semibold px-5 py-2 text-sm disabled:opacity-50"
+          >
+            {busy === "restore" ? "Restaurando…" : "Restaurar"}
+          </button>
+          <input
+            ref={restoreInputRef}
+            type="file"
+            accept=".zip,application/zip"
+            className="hidden"
+            onChange={(e) => handleRestoreFile(e.target.files?.[0])}
+          />
           <Link
             to="/admin/productos/nuevo"
             className="rounded-full bg-slip-primary text-white font-bold px-5 py-2 text-sm hover:bg-slip-primary-muted"

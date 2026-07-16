@@ -6,6 +6,11 @@ import slugify from "slugify";
 import { ADMIN_PASSWORD, UPLOADS_DIR } from "../config.js";
 import { clearAdminCookie, requireAdmin, setAdminCookie, signAdminToken } from "../auth.js";
 import {
+  buildCatalogZip,
+  exportFilename,
+  restoreCatalogFromZip,
+} from "../catalog-backup.js";
+import {
   createProduct,
   deleteProduct,
   getProductById,
@@ -34,6 +39,18 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const ok = /^image\/(jpeg|jpg|png|webp)$/i.test(file.mimetype);
+    cb(null, ok);
+  },
+});
+
+const backupUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 80 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const ok =
+      file.mimetype === "application/zip" ||
+      file.mimetype === "application/x-zip-compressed" ||
+      /\.zip$/i.test(file.originalname);
     cb(null, ok);
   },
 });
@@ -135,5 +152,41 @@ adminRouter.post(
     }
     const url = `/uploads/${req.file.filename}`;
     res.status(201).json({ url });
+  }
+);
+
+adminRouter.get("/catalog/export", requireAdmin, (_req, res) => {
+  try {
+    const buffer = buildCatalogZip();
+    const filename = exportFilename();
+    res.setHeader("Content-Type", "application/zip");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${filename}"`
+    );
+    res.send(buffer);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "No se pudo exportar el catálogo" });
+  }
+});
+
+adminRouter.post(
+  "/catalog/restore",
+  requireAdmin,
+  backupUpload.single("backup"),
+  (req, res) => {
+    if (!req.file?.buffer) {
+      res.status(400).json({ error: "Archivo ZIP requerido" });
+      return;
+    }
+    try {
+      const result = restoreCatalogFromZip(req.file.buffer);
+      res.json({ ok: true, restored: result.restored });
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "No se pudo restaurar el catálogo";
+      res.status(400).json({ error: message });
+    }
   }
 );

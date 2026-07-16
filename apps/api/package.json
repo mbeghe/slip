@@ -14,6 +14,7 @@
     "db:sync-prices": "tsx src/sync-prices.ts"
   },
   "dependencies": {
+    "adm-zip": "^0.6.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
@@ -23,6 +24,7 @@
     "slugify": "^1.6.6"
   },
   "devDependencies": {
+    "@types/adm-zip": "^0.5.8",
     "@types/cookie-parser": "^1.4.8",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",

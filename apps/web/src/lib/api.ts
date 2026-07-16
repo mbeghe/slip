@@ -84,3 +84,34 @@ export async function adminUploadImage(file: File) {
   }
   return res.json() as Promise<{ url: string }>;
 }
+
+export async function adminExportCatalog() {
+  const res = await fetch("/api/admin/catalog/export", {
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const err = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(err.error || "No se pudo exportar el catálogo");
+  }
+  const blob = await res.blob();
+  const disposition = res.headers.get("Content-Disposition") || "";
+  const match = /filename="([^"]+)"/.exec(disposition);
+  const filename =
+    match?.[1] || `slip-catalog-${new Date().toISOString().slice(0, 10)}.zip`;
+  return { blob, filename };
+}
+
+export async function adminRestoreCatalog(file: File) {
+  const form = new FormData();
+  form.append("backup", file);
+  const res = await fetch("/api/admin/catalog/restore", {
+    method: "POST",
+    credentials: "include",
+    body: form,
+  });
+  if (!res.ok) {
+    const err = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(err.error || "No se pudo restaurar el catálogo");
+  }
+  return res.json() as Promise<{ ok: boolean; restored: number }>;
+}
